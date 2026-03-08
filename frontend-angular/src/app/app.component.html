@@ -1,0 +1,226 @@
+<!-- SuperCompare App -->
+<div class="app-shell">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon">⚖</span>
+        <span class="brand-name">SuperCompare</span>
+        <span class="brand-sub">DIA vs COTO</span>
+      </div>
+      <div class="status-badge" [class.online]="backendOnline" [class.offline]="!backendOnline">
+        <span class="status-dot"></span>
+        {{ backendOnline ? 'API conectada' : 'API desconectada' }}
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero / Search -->
+  <section class="hero">
+    <div class="hero-inner">
+      <h1 class="hero-title">Encontrá el mejor precio</h1>
+      <p class="hero-sub">Comparamos DIA y COTO en tiempo real</p>
+
+      <div class="search-wrap">
+        <div class="search-box" [class.active]="query.length > 0">
+          <span class="search-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+          </span>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Buscá un producto... (ej: leche, pan, arroz)"
+            [(ngModel)]="query"
+            (input)="onSearchInput()"
+            (keyup.enter)="search()"
+            autocomplete="off"
+          />
+          <button class="clear-btn" *ngIf="query" (click)="clearSearch()">×</button>
+          <button class="search-btn" (click)="search()" [disabled]="loading">
+            <span *ngIf="!loading">Buscar</span>
+            <span *ngIf="loading" class="spinner"></span>
+          </button>
+        </div>
+
+        <!-- Recent searches -->
+        <div class="recent-wrap" *ngIf="recentSearches.length && !result">
+          <span class="recent-label">Recientes:</span>
+          <button class="recent-tag" *ngFor="let s of recentSearches" (click)="useRecent(s)">{{ s }}</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Error -->
+  <div class="error-banner" *ngIf="error">
+    <span class="error-icon">⚠</span>
+    <span>{{ error }}</span>
+  </div>
+
+  <!-- Loading skeleton -->
+  <section class="results-wrap" *ngIf="loading">
+    <div class="skeleton-grid">
+      <div class="skeleton-card" *ngFor="let i of [1,2,3,4]"></div>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section class="results-wrap" *ngIf="result && !loading">
+    
+    <!-- Summary bar -->
+    <div class="summary-bar">
+      <div class="summary-inner">
+        <div class="summary-query">
+          Resultados para <strong>"{{ result.query }}"</strong>
+        </div>
+        <div class="summary-stats">
+          <span class="stat-chip dia-chip">
+            <img src="assets/dia-logo.png" alt="DIA" class="mini-logo" onerror="this.style.display='none'">
+            DIA: {{ totalDia }} productos
+          </span>
+          <span class="stat-chip coto-chip">
+            <img src="assets/coto-logo.png" alt="COTO" class="mini-logo" onerror="this.style.display='none'">
+            COTO: {{ totalCoto }} productos
+          </span>
+        </div>
+        <div class="sort-wrap">
+          <label class="sort-label">Ordenar:</label>
+          <select class="sort-select" [(ngModel)]="sortBy" (change)="onSortChange()">
+            <option value="price">Precio ↑</option>
+            <option value="name">Nombre A-Z</option>
+            <option value="discount">Mayor descuento</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Winner banner -->
+    <div class="winner-banner" *ngIf="comparedProducts.length">
+      <div class="winner-inner">
+        <div class="winner-side dia-side" [class.winner]="cheaperDiaCount > cheaperCotoCount">
+          <span class="winner-label" *ngIf="cheaperDiaCount > cheaperCotoCount">🏆 Más barato</span>
+          <div class="winner-name">DIA</div>
+          <div class="winner-count">{{ cheaperDiaCount }} productos más baratos</div>
+        </div>
+        <div class="vs-divider">VS</div>
+        <div class="winner-side coto-side" [class.winner]="cheaperCotoCount > cheaperDiaCount">
+          <span class="winner-label" *ngIf="cheaperCotoCount > cheaperDiaCount">🏆 Más barato</span>
+          <div class="winner-name">COTO</div>
+          <div class="winner-count">{{ cheaperCotoCount }} productos más baratos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No results -->
+    <div class="empty-state" *ngIf="comparedProducts.length === 0">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Sin resultados</div>
+      <div class="empty-sub">Probá con otro término de búsqueda</div>
+    </div>
+
+    <!-- Product cards grid -->
+    <div class="compare-grid">
+      <div class="compare-card" *ngFor="let cp of comparedProducts; let i = index"
+           [class.cheapest-dia]="cp.cheapest === 'dia'"
+           [class.cheapest-coto]="cp.cheapest === 'coto'"
+           [class.equal]="cp.cheapest === 'equal'">
+
+        <!-- Card header badge -->
+        <div class="card-badge" [ngClass]="cp.cheapest">
+          <span *ngIf="cp.cheapest === 'dia'">💚 Más barato en DIA</span>
+          <span *ngIf="cp.cheapest === 'coto'">🔴 Más barato en COTO</span>
+          <span *ngIf="cp.cheapest === 'equal'">⚖ Mismo precio</span>
+          <span *ngIf="cp.cheapest === 'unknown'">Solo en un super</span>
+        </div>
+
+        <div class="card-body">
+
+          <!-- DIA product -->
+          <div class="supermarket-col dia-col" [class.cheaper]="cp.cheapest === 'dia'" [class.empty-col]="!cp.dia">
+            <div class="super-header dia-header">
+              <span class="super-label">DIA</span>
+              <span class="sale-tag" *ngIf="cp.dia?.is_on_sale">
+                -{{ cp.dia?.discount_percent }}%
+              </span>
+            </div>
+            <ng-container *ngIf="cp.dia; else noProduct">
+              <div class="product-image-wrap">
+                <img [src]="cp.dia.image_url" [alt]="cp.dia.name" class="product-img"
+                     *ngIf="cp.dia.image_url"
+                     onerror="this.src='assets/no-image.svg'">
+                <div class="no-img" *ngIf="!cp.dia.image_url">📦</div>
+              </div>
+              <div class="product-name">{{ cp.dia.name }}</div>
+              <div class="price-block">
+                <div class="price-current dia-price">{{ formatPrice(cp.dia.price) }}</div>
+                <div class="price-original" *ngIf="cp.dia.original_price">
+                  antes {{ formatPrice(cp.dia.original_price) }}
+                </div>
+              </div>
+              <a [href]="cp.dia.product_url" target="_blank" class="ver-btn dia-btn" *ngIf="cp.dia.product_url">
+                Ver en DIA →
+              </a>
+            </ng-container>
+            <ng-template #noProduct>
+              <div class="not-found">No encontrado</div>
+            </ng-template>
+          </div>
+
+          <!-- Divider with diff -->
+          <div class="diff-col" *ngIf="cp.dia && cp.coto">
+            <div class="diff-pill" *ngIf="cp.priceDiff && cp.priceDiff > 0">
+              <span class="diff-amount">{{ formatPrice(cp.priceDiff) }}</span>
+              <span class="diff-label">diferencia</span>
+              <span class="diff-percent">{{ cp.priceDiffPercent }}%</span>
+            </div>
+            <div class="diff-pill equal-pill" *ngIf="cp.priceDiff === 0">
+              <span>Igual</span>
+            </div>
+          </div>
+
+          <!-- COTO product -->
+          <div class="supermarket-col coto-col" [class.cheaper]="cp.cheapest === 'coto'" [class.empty-col]="!cp.coto">
+            <div class="super-header coto-header">
+              <span class="super-label">COTO</span>
+              <span class="sale-tag" *ngIf="cp.coto?.is_on_sale">
+                -{{ cp.coto?.discount_percent }}%
+              </span>
+            </div>
+            <ng-container *ngIf="cp.coto; else noCotoProduct">
+              <div class="product-image-wrap">
+                <img [src]="cp.coto.image_url" [alt]="cp.coto.name" class="product-img"
+                     *ngIf="cp.coto.image_url"
+                     onerror="this.src='assets/no-image.svg'">
+                <div class="no-img" *ngIf="!cp.coto.image_url">📦</div>
+              </div>
+              <div class="product-name">{{ cp.coto.name }}</div>
+              <div class="price-block">
+                <div class="price-current coto-price">{{ formatPrice(cp.coto.price) }}</div>
+                <div class="price-original" *ngIf="cp.coto.original_price">
+                  antes {{ formatPrice(cp.coto.original_price) }}
+                </div>
+              </div>
+              <a [href]="cp.coto.product_url" target="_blank" class="ver-btn coto-btn" *ngIf="cp.coto.product_url">
+                Ver en COTO →
+              </a>
+            </ng-container>
+            <ng-template #noCotoProduct>
+              <div class="not-found">No encontrado</div>
+            </ng-template>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>SuperCompare · Precios en tiempo real · Solo para uso personal</p>
+  </footer>
+
+</div>

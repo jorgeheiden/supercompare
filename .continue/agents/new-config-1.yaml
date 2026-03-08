@@ -1,0 +1,33 @@
+# This is an example configuration file
+# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
+
+name: Example Config
+version: 1.0.0
+schema: v1
+
+# Define which models can be used
+# https://docs.continue.dev/customization/models
+models:
+  - name: deepseek-v3
+    provider: openrouter
+    model: deepseek/deepseek-chat
+    apiKey: TU_API_KEY_OPENROUTER
+
+  - name: deepseek-reasoner
+    provider: openrouter
+    model: deepseek/deepseek-r1
+    apiKey: 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
+# MCP Servers that Continue can access
+# https://docs.continue.dev/customization/mcp-tools
+mcpServers:
+  - uses: anthropic/memory-mcp
+
+experimental:
+  modelRoles:
+    inlineEdit: deepseek-v3
+    directoryDrafting: deepseek-v3
+contextProviders:
+  - name: code
+  - name: docs
+  - name: diff
+  - name: folder

@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://TU-APP.onrender.com'
+  apiUrl: 'https://supercompare-7sap.onrender.com/'
 };

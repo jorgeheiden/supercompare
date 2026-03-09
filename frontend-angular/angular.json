@@ -25,6 +25,10 @@
           "configurations": {
             "production": {
               "budgets": [
+                {
+        "replace": "src/environments/environment.ts",
+        "with": "src/environments/environment.prod.ts"
+      },
   {
     "type": "initial",
     "maximumWarning": "500kb",
